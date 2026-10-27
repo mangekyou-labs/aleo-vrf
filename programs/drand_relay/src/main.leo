@@ -1,3 +1,10 @@
+// drand_relay.aleo is a trusted relay: one configured relayer delivers drand quicknet rounds, and the program does not check them.
+//
+// Aleo can't check a drand BLS signature on-chain (snarkVM has no pairing), so
+// the relayer can delay, withhold, or forge a round. Every fulfillment stores
+// the round and the full signature in public mappings, so anyone can re-check
+// it against quicknet's public key afterwards. See
+// docs/adr/0001-trusted-relay-drand.md.
 import credits.aleo;
 
 const PENDING: u8 = 0u8;
@@ -57,16 +64,16 @@ program drand_relay.aleo {
     // pays `fee`, which must equal the configured fee, into escrow.
     fn request(public tag: field, public fee_amount: u64) -> Final {
         let escrow: Final = credits.aleo::transfer_public_as_signer(std::ctx::addr(), fee_amount);
-        let h: Handle = Handle { consumer: std::ctx::caller(), tag: tag };
+        let handle: Handle = Handle { consumer: std::ctx::caller(), tag: tag };
         let payer: address = std::ctx::signer();
         return final {
             assert(!paused.get(0u8));
-            assert(!requests.contains(h));
+            assert(!requests.contains(handle));
             assert_eq(fee_amount, fee.get(0u8));
             let id: u64 = next_request_id.get_or_use(0u8, 1u64);
             let round: u64 = drand_relay_core::target_round(std::ctx::block_timestamp());
-            requests.set(h, Request { request_id: id, round: round, payer: payer, fee: fee_amount, status: PENDING });
-            handles.set(id, h);
+            requests.set(handle, Request { request_id: id, round: round, payer: payer, fee: fee_amount, status: PENDING });
+            handles.set(id, handle);
             next_request_id.set(0u8, id + 1u64);
             escrow.run();
         };
@@ -79,9 +86,9 @@ program drand_relay.aleo {
     // asserts they match. Not pausable.
     fn fulfill(public handle: Handle, public round: u64, public sig: [u128; 3], public payee: address, public fee_amount: u64) -> Final {
         let payout: Final = credits.aleo::transfer_public(payee, fee_amount);
-        let c: address = std::ctx::caller();
+        let caller: address = std::ctx::caller();
         return final {
-            assert_eq(c, relayer.get(0u8));
+            assert_eq(caller, relayer.get(0u8));
             let req: Request = requests.get(handle);
             assert_eq(req.status, PENDING);
             assert_eq(round, req.round);
