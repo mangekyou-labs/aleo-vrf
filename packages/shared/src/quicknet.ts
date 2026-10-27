@@ -1,4 +1,4 @@
-import { bytesToBigInt, hexToBytes } from "./limbs.ts";
+import { bytesToBigInt, hexToBytes } from "./bytes.ts";
 
 const CHAIN_HASH = "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971";
 const chainBytes = hexToBytes(CHAIN_HASH);
