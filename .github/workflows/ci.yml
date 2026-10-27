@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  LEO_VERSION: "4.4.4"
+
+jobs:
+  leo-test:
+    name: leo test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Leo
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/leo.zip" \
+            "https://github.com/ProvableHQ/leo/releases/download/leo-lang-v${LEO_VERSION}/leo-lang-v${LEO_VERSION}-x86_64-unknown-linux-gnu.zip"
+          unzip -q "$RUNNER_TEMP/leo.zip" -d "$RUNNER_TEMP/leo"
+          sudo install -m 755 "$(find "$RUNNER_TEMP/leo" -type f -name leo | head -n 1)" /usr/local/bin/leo
+          leo --version
+
+      # The shared library: round binding and the output v1 golden vector.
+      - name: leo test (drand_relay_core)
+        run: leo test --disable-update-check --path programs/drand_relay_core
+
+      - name: leo test (drand_relay)
+        run: leo test --disable-update-check --path programs/drand_relay
+
+  ts-test:
+    name: TS tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The devnet suite (packages/devnet) needs a live local devnet and is not run here.
+      - run: pnpm test
