@@ -1,0 +1,17 @@
+{
+  "name": "@drand-relay/devnet",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:devnet": "vitest run"
+  },
+  "dependencies": {
+    "@drand-relay/shared": "workspace:*",
+    "@provablehq/sdk": "0.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "vitest": "^5.0.5"
+  }
+}
