@@ -23,6 +23,11 @@ jobs:
           sudo install -m 755 "$(find "$RUNNER_TEMP/leo" -type f -name leo | head -n 1)" /usr/local/bin/leo
           leo --version
 
+      # leo expects its home directory (~/.aleo) to exist and fails with
+      # EPAK0375062 on a fresh runner otherwise.
+      - name: Create Leo home
+        run: mkdir -p "$HOME/.aleo"
+
       # The shared library: round binding and the output v1 golden vector.
       - name: leo test (drand_relay_core)
         run: leo test --disable-update-check --path programs/drand_relay_core
