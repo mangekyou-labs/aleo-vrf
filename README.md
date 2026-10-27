@@ -40,10 +40,20 @@ pnpm test        # TS tests
 pnpm test:leo    # leo test for both Leo packages
 ```
 
-The devnet suite deploys the built program, requests, waits for the real drand round, and fulfills it:
+`leo test` calls `drand_relay.aleo` through a test program, so the admin setters always see that program as the caller and refuse it. That means `leo test` can't configure the service, and it covers only the deploy state, admin rejection, and the output v1 golden vector. Request, fulfill, pause, and the admin success path are covered by the devnet suite.
+
+The devnet suite deploys the built program, configures it as the admin, requests, waits for the real drand round, and fulfills it. It needs a snarkOS built with the `test_network` feature, which the release binaries don't have. Build one into its own directory:
+
+```sh
+cargo install --locked snarkos --features test_network --root ~/.cache/snarkos-test-network
+```
+
+Then start the devnet and run the suite:
 
 ```sh
 leo build --path programs/drand_relay
-leo devnet --snarkos <snarkos built with --features test_network> --snarkos-features test_network --clear-storage -y
+leo devnet --snarkos ~/.cache/snarkos-test-network/bin/snarkos --snarkos-features test_network --clear-storage -y
 pnpm test:devnet
 ```
+
+Anyone can recompute an output with the pure `output_v1` entry point on `drand_relay.aleo`, which uses the same code as `fulfill`.
