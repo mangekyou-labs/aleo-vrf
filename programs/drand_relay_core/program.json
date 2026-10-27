@@ -1,0 +1,9 @@
+{
+  "program": "drand_relay_core",
+  "version": "0.1.0",
+  "description": "",
+  "license": "MIT",
+  "leo": "4.4.4",
+  "dependencies": null,
+  "dev_dependencies": null
+}
