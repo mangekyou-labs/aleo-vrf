@@ -22,6 +22,27 @@ program test_drand_relay.aleo {
         };
     }
 
+    // The golden vector through the program's own output entry point. The same
+    // input and output as drand_relay_core's golden_output_v1 and
+    // packages/shared/test/output.test.ts.
+    @test
+    fn golden_output_v1_entry() {
+        let input: drand_relay_core::OutputInput = drand_relay_core::OutputInput {
+            domain: drand_relay_core::OUTPUT_DOMAIN_V1,
+            chain: drand_relay_core::QUICKNET_CHAIN,
+            request_id: 1u64,
+            consumer: aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px,
+            tag: 7field,
+            round: 1000u64,
+            sig: [
+                239626968901406750420327125163575684777u128,
+                235778950374705849948450593008868069669u128,
+                302081162955922238783914645960155553337u128,
+            ],
+        };
+        assert_eq(drand_relay.aleo::output_v1(input), 2970490141221046626481504361745901933087069281016493373753253154666567523302field);
+    }
+
     // Signed by the admin key, but called through this program. The caller is
     // test_drand_relay.aleo, not the admin, so each setter must refuse. This is
     // the case of a program that the admin key signs for trying to reconfigure

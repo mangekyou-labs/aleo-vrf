@@ -103,6 +103,13 @@ program drand_relay.aleo {
         };
     }
 
+    // Output v1 for `input`, exactly as `fulfill` computes it. Pure, with no
+    // `final`, so anyone can execute it to recompute an output, and an audit
+    // can pin v1 against this entry point.
+    fn output_v1(public input: drand_relay_core::OutputInput) -> field {
+        return drand_relay_core::output_v1(input);
+    }
+
     // Admin setters. Only a direct call from the admin passes: the caller must
     // be the admin, so a program the admin key happens to sign for can't
     // reconfigure the service behind the admin's back.
