@@ -1,0 +1,9 @@
+.scratch/
+node_modules/
+dist/
+.env
+
+# Leo build outputs
+programs/*/build/
+programs/*/outputs/
+.aleo/
