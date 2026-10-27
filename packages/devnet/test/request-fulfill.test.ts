@@ -9,12 +9,14 @@
 //
 // The suite plays every role with the devnet's funded dev accounts: account 0
 // deploys (and so is admin), account 1 is the relayer, account 2 requests as a
-// wallet (so it is both consumer and payer), account 3 is an outsider. The
+// wallet (so its address is the handle's consumer and it pays the fee),
+// account 3 is an outsider. The
 // payee is a fresh address, so its balance is exactly the fees it was paid.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   Account,
+  Address,
   AleoNetworkClient,
   ProgramManager,
   getOrInitConsensusVersionTestHeights,
@@ -36,10 +38,11 @@ const DEV_KEYS = [
 ];
 const admin = new Account({ privateKey: DEV_KEYS[0] });
 const relayer = new Account({ privateKey: DEV_KEYS[1] });
-const consumer = new Account({ privateKey: DEV_KEYS[2] });
+const payer = new Account({ privateKey: DEV_KEYS[2] });
 const outsider = new Account({ privateKey: DEV_KEYS[3] });
 const payee = new Account();
 
+const SERVICE = Address.fromProgramId(PROGRAM).to_string();
 const FEE = 1_000n; // microcredits
 // A fresh tag per run, so the suite also runs against an already-deployed program.
 const TAG = BigInt(Date.now());
@@ -107,7 +110,7 @@ async function drandRound(round: bigint): Promise<string> {
   throw new Error(`drand round ${round} was not available`);
 }
 
-const handle = `{ consumer: ${consumer.address().to_string()}, tag: ${TAG}field }`;
+const handle = `{ consumer: ${payer.address().to_string()}, tag: ${TAG}field }`;
 const limbsLiteral = (sig: string) => `[${signatureToLimbs(sig).map((l) => `${l}u128`).join(", ")}]`;
 
 describe("drand_relay.aleo on a local devnet", () => {
@@ -127,17 +130,37 @@ describe("drand_relay.aleo on a local devnet", () => {
     }
   });
 
+  // leo test can only call the program through a test program, so the admin
+  // setters can't succeed there; their success path and the outsider check on
+  // a direct call live here.
+  it("an outsider key can't configure the service", async () => {
+    expect((await exec(outsider, "set_relayer", [outsider.address().to_string()])).status).toBe("rejected");
+    expect((await exec(outsider, "set_relayer_payee", [outsider.address().to_string()])).status).toBe("rejected");
+    expect((await exec(outsider, "set_fee", ["0u64"])).status).toBe("rejected");
+    expect((await exec(outsider, "set_paused", ["false"])).status).toBe("rejected");
+  });
+
   it("admin configures relayer, payee, and fee, then unpauses", async () => {
     expect((await exec(admin, "set_relayer", [relayer.address().to_string()])).status).toBe("accepted");
     expect((await exec(admin, "set_relayer_payee", [payee.address().to_string()])).status).toBe("accepted");
     expect((await exec(admin, "set_fee", [`${FEE}u64`])).status).toBe("accepted");
     expect((await exec(admin, "set_paused", ["false"])).status).toBe("accepted");
     expect(await mapping("relayer", "0u8")).toBe(relayer.address().to_string());
+    expect(await mapping("relayer_payee", "0u8")).toBe(payee.address().to_string());
+    expect(await mapping("fee", "0u8")).toBe(`${FEE}u64`);
+    expect(await mapping("paused", "0u8")).toBe("false");
+  });
+
+  it("request rejects a fee other than the configured one", async () => {
+    expect((await exec(payer, "request", [`${TAG}field`, `${FEE - 1n}u64`])).status).toBe("rejected");
+    expect(await mapping("requests", handle)).toBeNull();
   });
 
   it("request escrows the fee and binds a round at least 30 s after its block", async () => {
-    const { status, blockTimestamp } = await exec(consumer, "request", [`${TAG}field`, `${FEE}u64`]);
+    const escrowBefore = await balance(SERVICE);
+    const { status, blockTimestamp } = await exec(payer, "request", [`${TAG}field`, `${FEE}u64`]);
     expect(status).toBe("accepted");
+    expect(await balance(SERVICE)).toBe(escrowBefore + FEE);
     const req = await mapping("requests", handle);
     expect(req).not.toBeNull();
     round = BigInt(/round:\s*(\d+)u64/.exec(req!)![1]);
@@ -146,10 +169,18 @@ describe("drand_relay.aleo on a local devnet", () => {
     expect(roundTime(round)).toBeGreaterThanOrEqual(blockTimestamp + QUICKNET.minLead);
     expect(roundTime(round)).toBeLessThan(blockTimestamp + QUICKNET.minLead + QUICKNET.period);
     expect(await mapping("results", handle)).toBeNull();
+    expect(await mapping("signatures", handle)).toBeNull();
+    expect(await mapping("handles", `${requestId}u64`)).not.toBeNull();
   });
 
   it("the same tag is rejected on-chain", async () => {
-    expect((await exec(consumer, "request", [`${TAG}field`, `${FEE}u64`])).status).toBe("rejected");
+    expect((await exec(payer, "request", [`${TAG}field`, `${FEE}u64`])).status).toBe("rejected");
+  });
+
+  it("a different tag gets the next request id", async () => {
+    expect((await exec(payer, "request", [`${TAG + 2n}field`, `${FEE}u64`])).status).toBe("accepted");
+    const next = await mapping("requests", `{ consumer: ${payer.address().to_string()}, tag: ${TAG + 2n}field }`);
+    expect(next).toMatch(new RegExp(`request_id:\\s*${requestId + 1n}u64`));
   });
 
   it("fetches the real drand round once it is published", async () => {
@@ -186,7 +217,7 @@ describe("drand_relay.aleo on a local devnet", () => {
 
     const expected = computeOutput({
       requestId,
-      consumer: consumer.address().to_string(),
+      consumer: payer.address().to_string(),
       tag: TAG,
       round,
       signature,
@@ -205,7 +236,7 @@ describe("drand_relay.aleo on a local devnet", () => {
   });
 
   it("pause blocks new requests", async () => {
-    expect((await exec(consumer, "request", [`${TAG + 1n}field`, `${FEE}u64`])).status).toBe("rejected");
+    expect((await exec(payer, "request", [`${TAG + 1n}field`, `${FEE}u64`])).status).toBe("rejected");
     expect((await exec(admin, "set_paused", ["false"])).status).toBe("accepted");
   });
 });

@@ -18,6 +18,11 @@ export struct Request {
     status: u8,
 }
 
+// Shared by every admin setter.
+final fn assert_admin(caller: address) {
+    assert_eq(caller, admin.get(0u8));
+}
+
 program drand_relay.aleo {
     mapping requests: Handle => Request;
     mapping handles: u64 => Handle;
@@ -98,38 +103,39 @@ program drand_relay.aleo {
         };
     }
 
-    // Admin setters. The admin is identified by the transaction signer: the
-    // admin key is held out-of-band and signs these calls directly.
+    // Admin setters. Only a direct call from the admin passes: the caller must
+    // be the admin, so a program the admin key happens to sign for can't
+    // reconfigure the service behind the admin's back.
     fn set_relayer(public value: address) -> Final {
-        let s: address = std::ctx::signer();
+        let caller: address = std::ctx::caller();
         return final {
-            assert_eq(s, admin.get(0u8));
+            assert_admin(caller);
             relayer.set(0u8, value);
         };
     }
 
     fn set_relayer_payee(public value: address) -> Final {
-        let s: address = std::ctx::signer();
+        let caller: address = std::ctx::caller();
         return final {
-            assert_eq(s, admin.get(0u8));
+            assert_admin(caller);
             relayer_payee.set(0u8, value);
         };
     }
 
     // Zero is allowed.
     fn set_fee(public value: u64) -> Final {
-        let s: address = std::ctx::signer();
+        let caller: address = std::ctx::caller();
         return final {
-            assert_eq(s, admin.get(0u8));
+            assert_admin(caller);
             fee.set(0u8, value);
         };
     }
 
     // Pause blocks `request` only; `fulfill` is never pausable.
     fn set_paused(public value: bool) -> Final {
-        let s: address = std::ctx::signer();
+        let caller: address = std::ctx::caller();
         return final {
-            assert_eq(s, admin.get(0u8));
+            assert_admin(caller);
             paused.set(0u8, value);
         };
     }
