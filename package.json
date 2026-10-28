@@ -1,0 +1,10 @@
+{
+  "name": "drand-relay",
+  "private": true,
+  "packageManager": "pnpm@8.15.9",
+  "scripts": {
+    "test": "pnpm --filter @drand-relay/shared test",
+    "test:leo": "leo test --path programs/drand_relay_core && leo test --path programs/drand_relay",
+    "test:devnet": "pnpm --filter @drand-relay/devnet test:devnet"
+  }
+}

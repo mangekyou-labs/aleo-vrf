@@ -20,6 +20,10 @@ _Avoid_: Consumer contract, client, beneficiary
 A consumer program's recorded commitment to a future round, made before that round can be published.
 _Avoid_: Job, order
 
+**Handle**:
+The pair of a consumer program and a tag of its choosing that names one randomness request. A consumer program can't reuse a handle, and it reads the request's output back by that handle.
+_Avoid_: Request ID, key, ticket
+
 **Relayer**:
 The trusted off-chain party authorized to submit published rounds to the service. It can delay delivery and could forge a round, but forgery is detectable by audit.
 _Avoid_: Oracle, prover, operator
@@ -55,6 +59,10 @@ _Avoid_: Expiry, cancellation
 **Payer**:
 The wallet that signed a request's transaction and funded its fee. Refunds go back to it. It can differ from the consumer program that made the request.
 _Avoid_: Requester, sponsor
+
+**Escrow**:
+The service program's own public balance, which holds each request's fee from the request until fulfillment pays it to the relayer payee or a timeout refunds it to the payer.
+_Avoid_: Treasury, vault, deposit
 
 **Audit**:
 An off-chain check, runnable by anyone, that each fulfilled request's stored beacon signature is valid for its round under the beacon's public key, and that its output was derived from that signature.

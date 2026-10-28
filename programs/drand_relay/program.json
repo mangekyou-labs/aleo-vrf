@@ -1,0 +1,22 @@
+{
+  "program": "drand_relay.aleo",
+  "version": "0.1.0",
+  "description": "",
+  "license": "MIT",
+  "leo": "4.4.4",
+  "dependencies": [
+    {
+      "name": "credits.aleo",
+      "location": "network",
+      "path": null,
+      "edition": null
+    },
+    {
+      "name": "drand_relay_core",
+      "location": "local",
+      "path": "../drand_relay_core",
+      "edition": null
+    }
+  ],
+  "dev_dependencies": null
+}
